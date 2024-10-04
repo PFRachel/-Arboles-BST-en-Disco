@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ArbolBST")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+71c356d84d693ee305a3a4dbec81ca4f59523c21")]
 [assembly: System.Reflection.AssemblyProductAttribute("ArbolBST")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ArbolBST")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
