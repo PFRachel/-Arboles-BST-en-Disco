@@ -2,99 +2,157 @@ using System;
 using System.IO;
 namespace tarea3
 {
-    public class ArbolBinarioBusqueda
-    {
-        private string archivo = "arbol_almacenado.txt";  // Archivo donde se guardará el árbol
-        private long raizPosicion = -1;  // Posición del nodo raíz en el archivo
+   using System;
+using System.IO;
+
+public class ArbolBinarioBusqueda
+{
+        private string archivo = "arbol_almacenado.bin"; // Archivo binario
+        private long raizPosicion = -1; // Posición del nodo raíz en el archivo
 
         public ArbolBinarioBusqueda()
         {
             if (File.Exists(archivo))
             {
-                using (var lector = new StreamReader(archivo))
+                using (var fs = new FileStream(archivo, FileMode.Open, FileAccess.Read))
+                using (var reader = new BinaryReader(fs))
                 {
-
-                   var  linea = lector.ReadLine();
-                   if(long.TryParse(linea,out long posicion))
-                   {
-                    raizPosicion = posicion;
-                    Console.WriteLine("Archivo cargado correctamente");
-                   }
-                   else
-                   {
-                    Console.WriteLine("Archivo vacio o no tiene posicion valida");
-                   }
-                }   
-            }
-            else 
-            {
-                Console.WriteLine("No se encontro archivo, se creara uno nuevo");
-            }
-        }
-
-        // Guardar el árbol en disco
-        private void Guardar()
-        {
-            using (var escritor = new StreamWriter(archivo, false))
-            {
-                escritor.WriteLine(raizPosicion);
-            }
-            Console.WriteLine("Datos guardados en el archivo ");
-        }
-
-        // Inserción de un valor en el árbol
-        public void Insertar(int valor)
-        {
-            if (raizPosicion == -1) // Si el árbol está vacío
-            {
-                raizPosicion = EscribirNodoEnDisco(new Nodo(valor));
-                Console.WriteLine($"Insertando el nodo raiz; {valor}");
+                    raizPosicion = reader.ReadInt64(); // Leer la posición del nodo raíz
+                }
+                Console.WriteLine("Archivo cargado correctamente.");
             }
             else
             {
-                InsertarRecursivo(raizPosicion, valor);
-                Console.WriteLine($"Insertando el nodo;{valor}");
+                Console.WriteLine("No se encontró archivo. Se creará uno nuevo.");
             }
-
-            Guardar();
         }
 
-        private void InsertarRecursivo(long posicionActual, int valor)
+        // Método para guardar la posición de la raíz al inicio del archivo
+        private void Guardar()
         {
-            var nodoActual = LeerNodoDeDisco(posicionActual);
+            using (var fs = new FileStream(archivo, FileMode.OpenOrCreate, FileAccess.Write))
+            using (var writer = new BinaryWriter(fs))
+            {
+                writer.Seek(0, SeekOrigin.Begin);
+                writer.Write(raizPosicion); // Guardar la posición de la raíz
+            }
+            Console.WriteLine("Datos guardados en el archivo.");
+        }
 
+        // Método para insertar un nuevo valor en el árbol
+        public void Insertar(int valor)
+        {
+            raizPosicion = InsertarRecursivo(raizPosicion, valor);
+            Guardar(); // Guardar cambios en el archivo
+        }
+
+        private long InsertarRecursivo(long posicionActual, int valor)
+        {
+            if (posicionActual == -1)
+            {
+                // Crear un nuevo nodo si no hay posición
+                Nodo nuevoNodo = new Nodo(valor);
+                return EscribirNodoEnDisco(nuevoNodo);
+            }
+
+            // Leer el nodo actual
+            Nodo nodoActual = LeerNodoDeDisco(posicionActual);
+            
+            // Determinar dónde insertar el nuevo valor
             if (valor < nodoActual.valor)
             {
+                // Insertar en el subárbol izquierdo
                 if (nodoActual.posicionIzquierda == -1)
                 {
-                    nodoActual.posicionIzquierda = EscribirNodoEnDisco(new Nodo(valor));
-                    EscribirNodoEnDisco(nodoActual, posicionActual);
+                    nodoActual.posicionIzquierda = EscribirNodoEnDisco(nodoActual, posicionActual); // Actualizar posición en disco
                 }
                 else
                 {
-                    InsertarRecursivo(nodoActual.posicionIzquierda, valor);
+                    nodoActual.posicionIzquierda = InsertarRecursivo(nodoActual.posicionIzquierda, valor);
                 }
             }
             else if (valor > nodoActual.valor)
             {
+                // Insertar en el subárbol derecho
                 if (nodoActual.posicionDerecha == -1)
                 {
-                    nodoActual.posicionDerecha = EscribirNodoEnDisco(new Nodo(valor));
-                    EscribirNodoEnDisco(nodoActual, posicionActual);
+                    nodoActual.posicionDerecha = EscribirNodoEnDisco(nodoActual, posicionActual); // Actualizar posición en disco
                 }
                 else
                 {
-                    InsertarRecursivo(nodoActual.posicionDerecha, valor);
+                    nodoActual.posicionDerecha = InsertarRecursivo(nodoActual.posicionDerecha, valor);
                 }
             }
+            // Guardar el nodo actualizado en disco
+            EscribirNodoEnDisco(nodoActual, posicionActual);
+            return posicionActual; // Devolver la posición actual
+        }
+
+        // Método para buscar un valor en el árbol
+        public bool Buscar(int valor)
+        {
+            return BuscarRecursivo(raizPosicion, valor);
+        }
+
+        private bool BuscarRecursivo(long posicionActual, int valor)
+        {
+            if (posicionActual == -1) return false; // No encontrado
+
+            Nodo nodoActual = LeerNodoDeDisco(posicionActual);
+
+            if (valor == nodoActual.valor)
+                return true; // Valor encontrado
+            else if (valor < nodoActual.valor)
+                return BuscarRecursivo(nodoActual.posicionIzquierda, valor); // Buscar en el subárbol izquierdo
+            else
+                return BuscarRecursivo(nodoActual.posicionDerecha, valor); // Buscar en el subárbol derecho
+        }
+
+        // Método para eliminar un valor del árbol
+        public void Eliminar(int valor)
+        {
+            raizPosicion = EliminarRecursivo(raizPosicion, valor);
+            Guardar(); // Guardar cambios en el archivo
+        }
+
+        private long EliminarRecursivo(long posicionActual, int valor)
+        {
+            if (posicionActual == -1) return posicionActual; // No encontrado
+
+            Nodo nodoActual = LeerNodoDeDisco(posicionActual);
+
+            // Encontrar el nodo a eliminar
+            if (valor < nodoActual.valor)
+            {
+                nodoActual.posicionIzquierda = EliminarRecursivo(nodoActual.posicionIzquierda, valor); // Eliminar en el subárbol izquierdo
+            }
+            else if (valor > nodoActual.valor)
+            {
+                nodoActual.posicionDerecha = EliminarRecursivo(nodoActual.posicionDerecha, valor); // Eliminar en el subárbol derecho
+            }
+            else
+            {
+                // Nodo a eliminar encontrado
+                if (nodoActual.posicionIzquierda == -1) return nodoActual.posicionDerecha; // Sin hijo izquierdo
+                else if (nodoActual.posicionDerecha == -1) return nodoActual.posicionIzquierda; // Sin hijo derecho
+
+                // Nodo con dos hijos: buscar el menor en el subárbol derecho
+                Nodo sucesor = LeerNodoDeDisco(nodoActual.posicionDerecha);
+                nodoActual.valor = sucesor.valor; // Reemplazar valor
+                nodoActual.posicionDerecha = EliminarRecursivo(nodoActual.posicionDerecha, sucesor.valor); // Eliminar sucesor
+            }
+
+            // Guardar el nodo actualizado en disco
+            EscribirNodoEnDisco(nodoActual, posicionActual);
+            return posicionActual; // Devolver la posición actual
         }
 
         // Método para escribir un nodo en el archivo y devolver su posición
         private long EscribirNodoEnDisco(Nodo nodo, long posicion = -1)
         {
-            using (var fs = new FileStream(archivo, FileMode.OpenOrCreate, FileAccess.Write))
+            using (var fs = new FileStream(archivo, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None))
             {
-                if (posicion == -1)  // Si no se proporciona una posición, escribir al final
+                if (posicion == -1)
                 {
                     fs.Seek(0, SeekOrigin.End);
                     posicion = fs.Position;
@@ -104,108 +162,30 @@ namespace tarea3
                     fs.Seek(posicion, SeekOrigin.Begin);
                 }
 
-                using (var escritor = new StreamWriter(fs))
+                using (var writer = new BinaryWriter(fs))
                 {
-                    escritor.WriteLine(nodo.ToString());
+                    nodo.Escribir(writer);
                 }
             }
+            Console.WriteLine($"Escrito el nodo {nodo.valor} en la posición {posicion}");
             return posicion;
         }
 
         // Método para leer un nodo del archivo desde una posición específica
         private Nodo LeerNodoDeDisco(long posicion)
         {
-            using (var fs = new FileStream(archivo, FileMode.Open, FileAccess.Read))
+            using (var fs = new FileStream(archivo, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 fs.Seek(posicion, SeekOrigin.Begin);
-                using (var lector = new StreamReader(fs))
+                using (var reader = new BinaryReader(fs))
                 {
-                    var datos = lector.ReadLine();
-                    return Nodo.DesdeString(datos);
+                    var nodo = Nodo.Leer(reader);
+                    Console.WriteLine($"Leído el nodo en la posición {posicion}: valor={nodo.valor}, izquierda={nodo.posicionIzquierda}, derecha={nodo.posicionDerecha}");
+                    return nodo;
                 }
             }
         }
-
-        // Búsqueda de un valor en el árbol
-        public bool Buscar(int valor)
-        {
-            return BuscarRecursivo(raizPosicion, valor);
-        }
-
-        private bool BuscarRecursivo(long posicionActual, int valor)
-        {
-            if (posicionActual == -1)
-            {
-                Console.WriteLine($"El valor{valor}no se encontro");
-                 return false;
-            }
-
-            var nodoActual = LeerNodoDeDisco(posicionActual);
-
-            if (nodoActual.valor == valor)
-            {
-                return true;
-            }
-            else if (valor < nodoActual.valor)
-            {
-                return BuscarRecursivo(nodoActual.posicionIzquierda, valor);
-            }
-            else
-            {
-                return BuscarRecursivo(nodoActual.posicionDerecha, valor);
-            }
-        }
-
-        // Eliminación de un valor en el árbol
-        public void Eliminar(int valor)
-        {
-            raizPosicion = EliminarRecursivo(raizPosicion, valor);
-            Guardar();
-        }
-
-        private long EliminarRecursivo(long posicionActual, int valor)
-        {
-            if (posicionActual == -1) return -1;
-
-            var nodoActual = LeerNodoDeDisco(posicionActual);
-
-            if (valor < nodoActual.valor)
-            {
-                nodoActual.posicionIzquierda = EliminarRecursivo(nodoActual.posicionIzquierda, valor);
-                EscribirNodoEnDisco(nodoActual, posicionActual);
-            }
-            else if (valor > nodoActual.valor)
-            {
-                nodoActual.posicionDerecha = EliminarRecursivo(nodoActual.posicionDerecha, valor);
-                EscribirNodoEnDisco(nodoActual, posicionActual);
-            }
-            else
-            {
-                // Caso donde el nodo tiene 0 o 1 hijo
-                if (nodoActual.posicionIzquierda == -1)
-                    return nodoActual.posicionDerecha;
-                else if (nodoActual.posicionDerecha == -1)
-                    return nodoActual.posicionIzquierda;
-
-                // Caso donde el nodo tiene dos hijos
-                var nodoMinDerecha = MinimoValorNodo(nodoActual.posicionDerecha);
-                nodoActual.valor = nodoMinDerecha.valor;
-                nodoActual.posicionDerecha = EliminarRecursivo(nodoActual.posicionDerecha, nodoMinDerecha.valor);
-                EscribirNodoEnDisco(nodoActual, posicionActual);
-            }
-
-            return posicionActual;
-        }
-
-        private Nodo MinimoValorNodo(long posicion)
-        {
-            var nodoActual = LeerNodoDeDisco(posicion);
-            while (nodoActual.posicionIzquierda != -1)
-            {
-                nodoActual = LeerNodoDeDisco(nodoActual.posicionIzquierda);
-            }
-            return nodoActual;
-        }
     }
+
 
 }
